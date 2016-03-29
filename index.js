@@ -10,82 +10,79 @@ const read = require('read');
 
 
 
-const username = '';
-const password = '';
-
-const url = 'https://' + username + ':' + password + '@api.github.com/user/repos';
-
-const data = {
-  'name': 'hello-world',
-  'description': 'This is your first repository',
-  'private': false,
-  'has_issues': true,
-  'has_wiki': true,
-  'has_downloads': true
-};
-
-class Gittohub {
-
-  constructor() {
-    this.username = '';
-    this.password = '';
-    // this.projectName = projectName;
-    // this.projectDescription = projectDescription;
-  }
-
-  getUserInfo() {
-
-    const configPath = `${process.env.HOME}/.gittohub`;
-
-    return new Promise((resolve, reject) => {
-
-      fs.stat(configPath, (error, stats) => {
-        if (error) {
-
-          getCredentials((username, password) => {
-
-            const credentials = {username, password};
-            fs.writeFileSync(configPath, JSON.stringify(credentials), 'utf-8');
-            resolve(JSON.stringify(credentials));
-
-          });
-
-        } else {
-
-          fs.readFile(configPath, (error, data) => {
-            if (error) reject(error);
-
-            resolve(data);
-          });
-        }
-
-
-      });
+function getCredentials(cb) {
+  
+  read({prompt: 'github username: '}, (error, username) => {
+    read({prompt: 'github password: ', silent: true}, (error, password) => {
+      cb(username, password)
     });
-  }
-
-
-
+  });
 }
 
+function  getUserInfo() {
 
-function makeRequest(data) {
+  const configPath = `${process.env.HOME}/.gittohub`;
+
+  return new Promise((resolve, reject) => {
+
+    fs.stat(configPath, (error, stats) => {
+
+      // if file doesnt exist
+      if (error) {
+
+        getCredentials((username, password) => {
+
+          const credentials = { username, password };
+
+          fs.writeFile(configPath, JSON.stringify(credentials, null, 2), (error) => {
+
+            if (error) reject(error);
+            resolve(credentials);
+          });
+
+        });
+
+      } else {
+
+        fs.readFile(configPath, (error, data) => {
+          if (error) reject(error);
+
+          resolve(JSON.parse(data));
+        });
+      }
+
+    });
+  });
+}
+
+function  createRepo(credentials, projectName) {
+
+  const url = 'https://' + credentials.username + ':' + credentials.password + '@api.github.com/user/repos';
+
+  const project = {
+    'name': projectName,
+    'private': false,
+    'has_issues': true,
+    'has_wiki': true,
+    'has_downloads': true
+  };
 
   return fetch(url, {
     method: 'post',
     headers: {
       'User-Agent': 'gittohub'
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(project)
   })
   .then((res) => {
 
     if (res.status === 201) {
-      console.log('created');
+
+      return addRemote(credentials.username, projectName);
     } else if (res.status === 442) {
-      console.log('something wrong with the input. maybe project already exists.');
+      console.log('Project already exists.');
     } else if (res.status === 401) {
-      console.log('bad credentials');
+      console.log('Bad credentials');
     } 
   })
   .catch(error => {
@@ -93,9 +90,9 @@ function makeRequest(data) {
   });
 }
 
-function makeDir(newDir) {
+function  initGit(projectName) {
 
-  if (!newDir) {
+  if (!projectName) {
 
     process.exit();
 
@@ -103,52 +100,61 @@ function makeDir(newDir) {
 
     return new Promise((resolve, reject) => {
 
-      const dir = exec(`mkdir ${newDir}`, (error, stdout, stderr) => {
+      const dir = exec(`mkdir ${projectName}`, (error, stdout, stderr) => {
         if (stderr) {
           reject(stderr);
         }
-        resolve({newDir});
 
+        const git = exec('git init', {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
+
+          if (stderr) {
+            reject(stderr);
+          }
+          resolve(stdout);
+
+        });
       });
     });
 
   }
 }
 
-function initGit(path) {
-  return new Promise((resolve, reject) => {
+function addRemote(username, projectName) {
+  const command = `
+    echo "# ${projectName}" >> README.md
+    git add README.md
+    git commit -m "first commit"
+    git remote add origin https://github.com/${username}/${projectName}.git
+    git push -u origin master
+  `
+  const remote = exec(command, {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
+    if (error) throw error;
+    if (stderr) {
+      console.log(stderr);
+    }
 
-    const git = exec('git init', {cwd: path}, (error, stdout, stderr) => {
-
-      if (stderr) {
-        reject(stderr)
-      }
-      resolve(stdout)
-
-    });
+    console.log(stdout);
   });
 }
 
-// makeDir('test').then(res => {
-//   
-//   const path = `${__dirname}/${res.newDir}`
-//   return initGit(path);
-//
-// }).then(res => {
-//   console.log(res);
-// })
-// .catch(error => {
-//   console.log(error);
-// })
+if (!module.parent) {
+  
+  const projectName = 'test';
+  const projectPath = `${__dirname}/${projectName}`;
 
-const project = new Gittohub();
-project.getUserInfo().then(res => console.log(res)).catch(error => console.log(error))
+  initGit(projectName)
+    .then((res) => {
 
-function getCredentials(cb) {
- 
-  read({prompt: 'github username: '}, (error, username) => {
-    read({prompt: 'github password: ', silent: true}, (error, password) => {
-      cb(username, password)
+      console.log(res);
+      return getUserInfo();
+    })
+    .then(credentials => {
+
+      return createRepo(credentials, projectName);
+
+    })
+    .catch(error => {
+      console.log(error)
     });
-  });
+
 }
