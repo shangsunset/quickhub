@@ -4,8 +4,10 @@
   "description": "create projects on github made easy",
   "main": "index.js",
   "dependencies": {
+    "minimist": "^1.2.0",
     "node-fetch": "^1.4.1",
-    "promise": "^7.1.1"
+    "promise": "^7.1.1",
+    "read": "^1.0.7"
   },
   "devDependencies": {},
   "scripts": {
