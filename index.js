@@ -131,30 +131,28 @@ function  getUserInfo() {
   });
 }
 
-if (!module.parent) {
   
-  const projectName = argv['_'][0];
-  if (!projectName) {
+const projectName = argv['_'][0];
+if (!projectName) {
 
-    process.exit();
+  process.exit();
 
-  } else {
-  const projectPath = `${__dirname}/${projectName}`;
+} else {
+const projectPath = `${__dirname}/${projectName}`;
 
-  initGit(projectName)
-    .then((res) => {
+initGit(projectName)
+  .then((res) => {
 
-      console.log(res);
-      return getUserInfo();
-    })
-    .then(credentials => {
+    console.log(res);
+    return getUserInfo();
+  })
+  .then(credentials => {
 
-      return createRepo(credentials, projectName);
+    return createRepo(credentials, projectName);
 
-    })
-    .catch(error => {
-      console.log(error)
-    });
+  })
+  .catch(error => {
+    console.log(error)
+  });
 
-  }
 }
