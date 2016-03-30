@@ -8,7 +8,83 @@ const Promise = require('promise');
 const argv = require('minimist')(process.argv.slice(2));
 const read = require('read');
 
+function  createRepo(credentials, projectName) {
 
+  const url = 'https://' + credentials.username + ':' + credentials.password + '@api.github.com/user/repos';
+
+  const project = {
+    'name': projectName,
+    'private': false,
+    'has_issues': true,
+    'has_wiki': true,
+    'has_downloads': true
+  };
+
+  return fetch(url, {
+    method: 'post',
+    headers: {
+      'User-Agent': 'gittohub'
+    },
+    body: JSON.stringify(project)
+  })
+  .then((res) => {
+
+    if (res.status === 201) {
+
+      return addRemote(credentials.username, projectName);
+    } else if (res.status === 442) {
+      console.log('Project already exists.');
+    } else if (res.status === 401) {
+      console.log('Bad credentials');
+    } else {
+      console.log('Somethings is wrong');
+      process.exit();
+    } 
+  })
+  .catch(error => {
+    console.error(error);
+  });
+}
+
+function  initGit(projectName) {
+
+  return new Promise((resolve, reject) => {
+
+    const dir = exec(`mkdir ${projectName}`, (error, stdout, stderr) => {
+      if (stderr) {
+        reject(stderr);
+      }
+
+      const git = exec('git init', {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
+
+        if (stderr) {
+          reject(stderr);
+        }
+        resolve(stdout);
+
+      });
+    });
+  });
+
+}
+
+function addRemote(username, projectName) {
+  const command = `
+    echo "# ${projectName}" >> README.md
+    git add README.md
+    git commit -m "first commit"
+    git remote add origin https://github.com/${username}/${projectName}.git
+    git push -u origin master
+  `
+  const remote = exec(command, {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
+    if (error) throw error;
+    if (stderr) {
+      console.log(stderr);
+    }
+
+    console.log(stdout);
+  });
+}
 
 function getCredentials(cb) {
   
@@ -55,91 +131,14 @@ function  getUserInfo() {
   });
 }
 
-function  createRepo(credentials, projectName) {
-
-  const url = 'https://' + credentials.username + ':' + credentials.password + '@api.github.com/user/repos';
-
-  const project = {
-    'name': projectName,
-    'private': false,
-    'has_issues': true,
-    'has_wiki': true,
-    'has_downloads': true
-  };
-
-  return fetch(url, {
-    method: 'post',
-    headers: {
-      'User-Agent': 'gittohub'
-    },
-    body: JSON.stringify(project)
-  })
-  .then((res) => {
-
-    if (res.status === 201) {
-
-      return addRemote(credentials.username, projectName);
-    } else if (res.status === 442) {
-      console.log('Project already exists.');
-    } else if (res.status === 401) {
-      console.log('Bad credentials');
-    } 
-  })
-  .catch(error => {
-    console.error(error);
-  });
-}
-
-function  initGit(projectName) {
-
+if (!module.parent) {
+  
+  const projectName = argv['_'][0];
   if (!projectName) {
 
     process.exit();
 
   } else {
-
-    return new Promise((resolve, reject) => {
-
-      const dir = exec(`mkdir ${projectName}`, (error, stdout, stderr) => {
-        if (stderr) {
-          reject(stderr);
-        }
-
-        const git = exec('git init', {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
-
-          if (stderr) {
-            reject(stderr);
-          }
-          resolve(stdout);
-
-        });
-      });
-    });
-
-  }
-}
-
-function addRemote(username, projectName) {
-  const command = `
-    echo "# ${projectName}" >> README.md
-    git add README.md
-    git commit -m "first commit"
-    git remote add origin https://github.com/${username}/${projectName}.git
-    git push -u origin master
-  `
-  const remote = exec(command, {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
-    if (error) throw error;
-    if (stderr) {
-      console.log(stderr);
-    }
-
-    console.log(stdout);
-  });
-}
-
-if (!module.parent) {
-  
-  const projectName = 'test';
   const projectPath = `${__dirname}/${projectName}`;
 
   initGit(projectName)
@@ -157,4 +156,5 @@ if (!module.parent) {
       console.log(error)
     });
 
+  }
 }
