@@ -1,8 +1,11 @@
 {
   "name": "quickhub",
-  "version": "1.0.0",
+  "version": "1.0.8",
   "description": "creating projects on github made easy",
   "main": "index.js",
+  "bin": {
+    "quickhub": "./index.js"
+  },
   "dependencies": {
     "minimist": "^1.2.0",
     "node-fetch": "^1.4.1",

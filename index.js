@@ -1,4 +1,4 @@
-'use strict';
+#!/usr/bin/env node
 
 const exec = require('child_process').exec;
 const fs = require('fs');
@@ -7,6 +7,7 @@ const fetch = require('node-fetch');
 const Promise = require('promise');
 const argv = require('minimist')(process.argv.slice(2));
 const read = require('read');
+
 
 function  createRepo(credentials, projectName) {
 
@@ -31,9 +32,9 @@ function  createRepo(credentials, projectName) {
 
     if (res.status === 201) {
 
-      return addRemote(credentials.username, projectName);
-    } else if (res.status === 442) {
-      console.log('Project already exists.');
+      addRemote(credentials.username, projectName);
+    } else if (res.status === 422) {
+      console.log('Repository already exists on Github.');
     } else if (res.status === 401) {
       console.log('Bad credentials');
     } else {
@@ -55,7 +56,7 @@ function  initGit(projectName) {
         reject(stderr);
       }
 
-      const git = exec('git init', {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
+      const git = exec('git init', {cwd: `${process.cwd()}/${projectName}`}, (error, stdout, stderr) => {
 
         if (stderr) {
           reject(stderr);
@@ -76,8 +77,8 @@ function addRemote(username, projectName) {
     git remote add origin https://github.com/${username}/${projectName}.git
     git push -u origin master
   `
-  const remote = exec(command, {cwd: `${__dirname}/${projectName}`}, (error, stdout, stderr) => {
-    if (error) throw error;
+  const remote = exec(command, {cwd: `${process.cwd()}/${projectName}`}, (error, stdout, stderr) => {
+    if (error) console.error(error);
     if (stderr) {
       console.log(stderr);
     }
@@ -131,28 +132,26 @@ function  getUserInfo() {
   });
 }
 
-  
 const projectName = argv['_'][0];
+
 if (!projectName) {
 
+  console.error('Missing project name. quickhub {awesomeProject}');
   process.exit();
 
 } else {
-const projectPath = `${__dirname}/${projectName}`;
 
-initGit(projectName)
-  .then((res) => {
+  const projectPath = `${process.cwd()}/${projectName}`;
 
-    console.log(res);
-    return getUserInfo();
-  })
-  .then(credentials => {
-
-    return createRepo(credentials, projectName);
-
-  })
-  .catch(error => {
-    console.log(error)
-  });
-
+  initGit(projectName)
+    .then(response => {
+      console.log(response);
+      return getUserInfo();
+    })
+    .then(credentials => {
+      return createRepo(credentials, projectName);
+    })
+    .catch(error => {
+      console.log(error)
+    });
 }
