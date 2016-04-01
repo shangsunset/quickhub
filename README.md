@@ -19,7 +19,7 @@ quickhub awesomeProject
 Result from running above command:
 
 ```
-Initialized empty Git repository in /Users/shangyeshen/Sites/quickhub/test/.git/
+Initialized empty Git repository in /Users/shangyeshen/Sites/quickhub/awesomeProject/.git/
 
 [master (root-commit) 99605e3] first commit
  1 file changed, 1 insertion(+)
@@ -43,7 +43,7 @@ quickhub('awesomeProject').then(response => {
 Response:
 ```
 { ok: true,
-  text: 'Initialized empty Git repository in /Users/shangyeshen/Sites/quickhub/test/.git/\n\n
+  text: 'Initialized empty Git repository in /Users/shangyeshen/Sites/quickhub/awesomeProject/.git/\n\n
   [master (root-commit) a2631fb] first commit\n
   1 file changed, 1 insertion(+)\n
   create mode 100644 README.md\n
