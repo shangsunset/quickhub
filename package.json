@@ -1,15 +1,15 @@
 {
   "name": "quickhub",
-  "version": "1.0.8",
+  "version": "1.0.10",
   "description": "creating projects on github made easy",
   "main": "index.js",
   "bin": {
-    "quickhub": "./index.js"
+    "quickhub": "./bin.js"
   },
   "dependencies": {
+    "bluebird": "^3.3.4",
     "minimist": "^1.2.0",
     "node-fetch": "^1.4.1",
-    "promise": "^7.1.1",
     "read": "^1.0.7"
   },
   "devDependencies": {},

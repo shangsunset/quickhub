@@ -1,89 +1,40 @@
-#!/usr/bin/env node
 
 const exec = require('child_process').exec;
 const fs = require('fs');
 
 const fetch = require('node-fetch');
-const Promise = require('promise');
-const argv = require('minimist')(process.argv.slice(2));
+const Promise = require('bluebird');
 const read = require('read');
 
 
-function  createRepo(credentials, projectName) {
+function getUserInfo() {
 
-  const url = 'https://' + credentials.username + ':' + credentials.password + '@api.github.com/user/repos';
-
-  const project = {
-    'name': projectName,
-    'private': false,
-    'has_issues': true,
-    'has_wiki': true,
-    'has_downloads': true
-  };
-
-  return fetch(url, {
-    method: 'post',
-    headers: {
-      'User-Agent': 'gittohub'
-    },
-    body: JSON.stringify(project)
-  })
-  .then((res) => {
-
-    if (res.status === 201) {
-
-      addRemote(credentials.username, projectName);
-    } else if (res.status === 422) {
-      console.log('Repository already exists on Github.');
-    } else if (res.status === 401) {
-      console.log('Bad credentials');
-    } else {
-      console.log('Somethings is wrong');
-      process.exit();
-    } 
-  })
-  .catch(error => {
-    console.error(error);
-  });
-}
-
-function  initGit(projectName) {
+  const configPath = `${process.env.HOME}/.quickhub`;
 
   return new Promise((resolve, reject) => {
 
-    const dir = exec(`mkdir ${projectName}`, (error, stdout, stderr) => {
-      if (stderr) {
-        reject(stderr);
+    fs.stat(configPath, (error, stats) => {
+      // if file doesnt exist
+      if (error) {
+
+        getCredentials((username, password) => {
+
+          const credentials = { username, password };
+          fs.writeFile(configPath, JSON.stringify(credentials, null, 2), (error) => {
+
+            if (error) reject(error);
+            resolve(credentials);
+          });
+        });
+      } else {
+
+        fs.readFile(configPath, (error, data) => {
+          if (error) reject(error);
+
+          resolve(JSON.parse(data));
+        });
       }
-
-      const git = exec('git init', {cwd: `${process.cwd()}/${projectName}`}, (error, stdout, stderr) => {
-
-        if (stderr) {
-          reject(stderr);
-        }
-        resolve(stdout);
-
-      });
     });
-  });
-
-}
-
-function addRemote(username, projectName) {
-  const command = `
-    echo "# ${projectName}" >> README.md
-    git add README.md
-    git commit -m "first commit"
-    git remote add origin https://github.com/${username}/${projectName}.git
-    git push -u origin master
-  `
-  const remote = exec(command, {cwd: `${process.cwd()}/${projectName}`}, (error, stdout, stderr) => {
-    if (error) console.error(error);
-    if (stderr) {
-      console.log(stderr);
-    }
-
-    console.log(stdout);
   });
 }
 
@@ -96,62 +47,116 @@ function getCredentials(cb) {
   });
 }
 
-function  getUserInfo() {
-
-  const configPath = `${process.env.HOME}/.gittohub`;
-
+function initGit(projectName) {
+  
   return new Promise((resolve, reject) => {
 
-    fs.stat(configPath, (error, stats) => {
-
-      // if file doesnt exist
-      if (error) {
-
-        getCredentials((username, password) => {
-
-          const credentials = { username, password };
-
-          fs.writeFile(configPath, JSON.stringify(credentials, null, 2), (error) => {
-
-            if (error) reject(error);
-            resolve(credentials);
-          });
-
-        });
-
-      } else {
-
-        fs.readFile(configPath, (error, data) => {
-          if (error) reject(error);
-
-          resolve(JSON.parse(data));
-        });
+    const dir = exec(`mkdir ${projectName}`, (error, stdout, stderr) => {
+      if (stderr) {
+        reject(stderr);
       }
+      const git = exec('git init', {cwd: `${process.cwd()}/${projectName}`}, (error, stdout, stderr) => {
 
+        if (stderr) {
+          reject(stderr);
+        }
+        resolve(stdout);
+      });
     });
   });
 }
 
-const projectName = argv['_'][0];
+function deleteDir(projectName, resolve, reject) {
+  
+  const dir = exec(`rm -rf ${projectName}`, (error, stdout, stderr) => {
 
-if (!projectName) {
+    if (stderr) reject(stderr);
+  });
+}
 
-  console.error('Missing project name. quickhub {awesomeProject}');
-  process.exit();
+function createRepo(credentials, projectName) {
 
-} else {
+  const url = 'https://' + credentials.username + ':' + credentials.password + '@api.github.com/user/repos';
 
-  const projectPath = `${process.cwd()}/${projectName}`;
+  const project = {
+    'name': projectName,
+    'private': false,
+    'has_issues': true,
+    'has_wiki': true,
+    'has_downloads': true
+  };
 
-  initGit(projectName)
-    .then(response => {
-      console.log(response);
-      return getUserInfo();
+  return new Promise((resolve, reject) => {
+
+    fetch(url, {
+      method: 'post',
+      headers: {
+        'User-Agent': 'quickhub'
+      },
+      body: JSON.stringify(project)
     })
-    .then(credentials => {
-      return createRepo(credentials, projectName);
+    .then((res) => {
+
+      if (res.status === 201) {
+        resolve();
+      } else if (res.status === 422) {
+        deleteDir(projectName, resolve, reject);
+        reject('Repository already exists on Github.');
+      } else if (res.status === 401) {
+        reject('Bad credentials');
+      } else {
+        reject('Somethings is wrong');
+        process.exit();
+      } 
     })
     .catch(error => {
-      console.log(error)
+      console.error(error);
     });
+  });
+}
+
+function addRemote(username, projectName) {
+  return new Promise((resolve, reject) => {
+
+    const command = `
+      echo "# ${projectName}" >> README.md
+      git add README.md
+      git commit -m "first commit"
+      git remote add origin https://github.com/${username}/${projectName}.git
+      git push -u origin master
+    `
+    const remote = exec(command, {cwd: `${process.cwd()}/${projectName}`}, (error, stdout, stderr) => {
+      resolve(stdout);
+      if (error) reject(error);
+      if (stderr) {
+        reject(stderr);
+      }
+    });
+  });
+}
+
+module.exports = function(projectName) {
+
+  return new Promise((resolve, reject) => {
+
+    if (!projectName) {
+      reject('Missing argument project name.');
+    } else {
+
+      return Promise.join(getUserInfo(), initGit(projectName), (credentials, initResponse) => {
+      
+        createRepo(credentials, projectName)
+          .then(() => addRemote(credentials.username, projectName))
+          .then(addRemoteResponse => {
+
+            const response = initResponse + '\n' + addRemoteResponse;
+            resolve({
+              ok: true,
+              text: response
+            });
+          })
+          .catch(error => reject(error));
+      });
+    }
+  });
 }
