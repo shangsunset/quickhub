@@ -1,5 +1,5 @@
 # quickhub
-Creating github project made easy
+Creating github project made even easier
 
 Every time you want to start a project, you have to `git init`, create a repo on Github, and type a bunch of commands
 to `add remote origin` blah blah.
@@ -36,7 +36,7 @@ quickhub('awesomeProject').then(response => {
     console.log(response);
   })
   .catch(error => {
-    console.log('Oops...' + error);
+    console.log(`Oops...${error}`);
   })
 ```
 
