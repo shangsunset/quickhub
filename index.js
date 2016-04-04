@@ -1,51 +1,7 @@
-
 const exec = require('child_process').exec;
-const fs = require('fs');
-
 const fetch = require('node-fetch');
 const Promise = require('bluebird');
-const read = require('read');
 
-
-function getUserInfo() {
-
-  const configPath = `${process.env.HOME}/.quickhub`;
-
-  return new Promise((resolve, reject) => {
-
-    fs.stat(configPath, (error, stats) => {
-      // if file doesnt exist
-      if (error) {
-
-        getCredentials((username, password) => {
-
-          const credentials = { username, password };
-          fs.writeFile(configPath, JSON.stringify(credentials, null, 2), (error) => {
-
-            if (error) reject(error);
-            resolve(credentials);
-          });
-        });
-      } else {
-
-        fs.readFile(configPath, (error, data) => {
-          if (error) reject(error);
-
-          resolve(JSON.parse(data));
-        });
-      }
-    });
-  });
-}
-
-function getCredentials(cb) {
-  
-  read({prompt: 'github username: '}, (error, username) => {
-    read({prompt: 'github password: ', silent: true}, (error, password) => {
-      cb(username, password)
-    });
-  });
-}
 
 function initGit(projectName) {
   
@@ -103,8 +59,10 @@ function createRepo(credentials, projectName) {
         deleteDir(projectName, resolve, reject);
         reject('Repository already exists on Github.');
       } else if (res.status === 401) {
+        deleteDir(projectName, resolve, reject);
         reject('Bad credentials');
       } else {
+        deleteDir(projectName, resolve, reject);
         reject('Somethings is wrong');
         process.exit();
       } 
@@ -135,28 +93,31 @@ function addRemote(username, projectName) {
   });
 }
 
-module.exports = function(projectName) {
+module.exports = function(projectName, credentials) {
 
+  if (typeof credentials === 'undefined') {
+    credentials = null;
+  }
   return new Promise((resolve, reject) => {
 
     if (!projectName) {
       reject('Missing argument project name.');
+    } else if (!credentials || (!credentials.username || !credentials.password)) {
+
+      reject('Bad credentials')
     } else {
 
-      return Promise.join(getUserInfo(), initGit(projectName), (credentials, initResponse) => {
-      
-        createRepo(credentials, projectName)
-          .then(() => addRemote(credentials.username, projectName))
-          .then(addRemoteResponse => {
+      const git = initGit(projectName);
+      const repo = createRepo(credentials, projectName);
+      const remote = repo.then(() => addRemote(credentials.username, projectName));
 
-            const response = initResponse + '\n' + addRemoteResponse;
-            resolve({
-              ok: true,
-              text: response
-            });
-          })
-          .catch(error => reject(error));
-      });
+      return Promise.join(git, repo, remote,  (initResponse, repoResponse, remoteResponse) => {
+      
+        const response = initResponse + '\n' + remoteResponse;
+        resolve(response);
+      })
+      .catch(error => reject(error))
     }
   });
 }
+
