@@ -44,8 +44,8 @@ quickhub('awesomeProject', {username, password}).then(response => {
 
 Response:
 ```
-{ ok: true,
-  text: 'Initialized empty Git repository in /Users/shangyeshen/Sites/quickhub/awesomeProject/.git/\n\n
+{
+  'Initialized empty Git repository in /Users/shangyeshen/Sites/quickhub/awesomeProject/.git/\n\n
   [master (root-commit) a2631fb] first commit\n
   1 file changed, 1 insertion(+)\n
   create mode 100644 README.md\n
