@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const execSync = require('child_process').execSync;
 const fs = require('fs');
 const read = require('read');
 const argv = require('minimist')(process.argv.slice(2));
@@ -7,10 +8,10 @@ const argv = require('minimist')(process.argv.slice(2));
 const quickhub = require('./index')
 
 const projectName = argv['_'][0];
+const configPath = `${process.env.HOME}/.quickhub`;
 
 function getUserCredentials() {
 
-  const configPath = `${process.env.HOME}/.quickhub`;
   return new Promise((resolve, reject) => {
 
     fs.stat(configPath, (error, stats) => {
@@ -43,11 +44,22 @@ function getUserCredentials() {
 
 function getCredentialsFromPrompt(cb) {
   
-  console.log('Please enter your github credentials. You only need to do this once...');
+  console.log('Please enter your github credentials.');
   read({prompt: 'github username: '}, (error, username) => {
     read({prompt: 'github password: ', silent: true}, (error, password) => {
       cb(username, password)
     });
+  });
+}
+
+function deleteConfigFile() {
+
+  fs.stat(configPath, (error, stats) => {
+    if (!error) {
+      
+      const file = execSync(`rm ${configPath}`)
+
+    }
   });
 }
 
@@ -70,6 +82,9 @@ if (!projectName) {
     .catch(error => {
       if (typeof error === 'string') {
         error = error.trim();
+      }
+      if (error.toLowerCase() === 'bad credentials') {
+        deleteConfigFile();
       }
       console.log(error);
     })

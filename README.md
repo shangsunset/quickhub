@@ -29,14 +29,16 @@ Branch master set up to track remote branch master from origin.
 
 Or using it as a module:
 ```javascript
-
 const quickhub = require('quickhub')
 
-quickhub('awesomeProject').then(response => {
+const username = 'john';
+const password = 'doe';
+
+quickhub('awesomeProject', {username, password}).then(response => {
     console.log(response);
   })
   .catch(error => {
-    console.log(`Oops...${error}`);
+    console.log(error);
   })
 ```
 
