@@ -1,6 +1,6 @@
 {
   "name": "quickhub",
-  "version": "1.10.2",
+  "version": "1.10.3",
   "description": "creating projects on github made easy",
   "main": "index.js",
   "bin": {

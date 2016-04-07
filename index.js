@@ -16,7 +16,10 @@ function initGit(projectName) {
         if (stderr) {
           reject(stderr);
         }
-        resolve(stdout);
+        resolve({
+          ok: true,
+          text: stdout
+        });
       });
     });
   });
@@ -84,7 +87,10 @@ function addRemote(username, projectName) {
       git push -u origin master
     `
     const remote = exec(command, {cwd: `${process.cwd()}/${projectName}`}, (error, stdout, stderr) => {
-      resolve(stdout);
+      resolve({
+        ok: true,
+        text: stdout
+      });
       if (error) reject(error);
       if (stderr) {
         reject(stderr);
@@ -108,12 +114,17 @@ module.exports = function(projectName, credentials) {
     } else {
 
       const git = initGit(projectName);
-      const repo = createRepo(credentials, projectName);
+      const repo = git.then(response => {
+        if (response.ok) {
+
+          createRepo(credentials, projectName)
+        }
+      });
       const remote = repo.then(() => addRemote(credentials.username, projectName));
 
       return Promise.join(git, repo, remote,  (initResponse, repoResponse, remoteResponse) => {
       
-        const response = initResponse + '\n' + remoteResponse;
+        const response = initResponse.text + '\n' + remoteResponse.text;
         resolve(response);
       })
       .catch(error => reject(error))
